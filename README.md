@@ -1,546 +1,243 @@
-# Kubernetes Learning Agent - Agentic AI Demo
+# Agentic AI Concepts — Learning Progression
 
-An educational implementation demonstrating **core Agentic AI concepts** with a practical Kubernetes troubleshooting agent.
+A hands-on educational repository demonstrating **core Agentic AI concepts** through 5 progressive implementations, from basic LLM completion to a full agentic system.
 
 ## 🎯 Learning Objectives
 
-This project teaches you how Agentic AI works end-to-end:
+This project teaches you how Agentic AI works end-to-end by building increasingly sophisticated agents:
 
-| Concept | Implementation | File Location |
-|---------|---------------|---------------|
-| **Input Processing** | User prompt → Query rewriting | `rewrite_query()` node |
-| **Embedding** | Text → Vectors (MiniLM) | `HuggingFaceEmbeddings` |
-| **Chunking** | Split docs → Overlapping chunks | `RecursiveCharacterTextSplitter` |
-| **Vector DB** | Store/retrieve semantic knowledge | `ChromaDB` |
-| **RAG Retrieval** | Query → Similar docs | `knowledge_base.search()` |
-| **LLM Calling** | Local (Ollama) or Cloud (OpenAI) | `create_llm()` |
-| **Tool Use** | LLM decides → Execute MCP tools | `decide_action()` + `execute_tools()` |
-| **LangGraph** | Orchestrate multi-step workflow | `StateGraph` with 5 nodes |
-| **MCP Protocol** | JSON-RPC over stdio | `MCPServer` class |
+| Level | File | Concept | Key Learning |
+|-------|------|---------|--------------|
+| **0** | `01-generative_ai.py` | Pure LLM Completion | Stateless chat, no tools, no memory |
+| **1** | `02-agent.py` | ReAct Agent (Direct Tools) | Reasoning + Acting loop with inline tools |
+| **1b** | `03-mcp_server.py` | MCP Server (Tool Provider) | Exposing tools via Model Context Protocol |
+| **2** | `04-agent_with_mcp.py` | MCP Client Agent | Consuming MCP tools from external server |
+| **3** | `05-kubernetes-agent.py` | Full Agentic System | LangGraph workflow, RAG, typed state, MCP server |
 
 ---
 
-## 🏗️ Architecture Overview
+## 📁 Directory Structure
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                         AGENTIC AI WORKFLOW (LangGraph)                     │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐    ┌──────────┐  │
-│  │ 1. REWRITE   │───▶│ 2. RETRIEVE  │───▶│ 3. DECIDE    │───▶│ 4. EXEC  │  │
-│  │    QUERY     │    │  (Vector DB) │    │  (LLM)       │    │  TOOLS   │  │
-│  └──────────────┘    └──────────────┘    └──────┬───────┘    └────┬─────┘  │
-│                                                  │                 │        │
-│                                                  ▼                 ▼        │
-│                                           ┌──────────────┐    ┌──────────┐  │
-│                                           │ 5. SYNTHESIZE│◀───│  TOOL    │  │
-│                                           │   (LLM)      │    │ RESULTS  │  │
-│                                           └──────┬───────┘    └──────────┘  │
-│                                                  │                          │
-│                                                  ▼                          │
-│                                           ┌──────────────┐                 │
-│                                           │ FINAL ANSWER │                 │
-│                                           └──────────────┘                 │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                    │
-                                    ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                           MCP SERVER (stdio)                                │
-│  JSON-RPC 2.0 ◀──────────────────────────────────────▶ LLM Client          │
-│  (Claude, Custom Agent, etc.)                                               │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                    │
-                                    ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                      KUBERNETES CLUSTER (KIND)                              │
-│  ┌─────────┐  ┌─────────┐  ┌─────────┐                                     │
-│  │ Pods    │  │ Deploy  │  │ Services│  ← 3 Tools: list_pods, get_logs,   │
-│  │ Logs    │  │ ments   │  │ Events  │     analyze_pod                    │
-│  └─────────┘  └─────────┘  └─────────┘                                     │
-└─────────────────────────────────────────────────────────────────────────────┘
+agentic-ai-concepts/
+├── 01-generative_ai.py       # L0: Pure LLM completion (Ollama)
+├── 02-agent.py               # L1: ReAct agent with direct @tool functions
+├── 03-mcp_server.py          # L1b: FastMCP server exposing Docker tools
+├── 04-agent_with_mcp.py      # L2: MCP client agent consuming tools via stdio
+├── 05-kubernetes-agent.py    # L3: Full agentic system (LangGraph + RAG + MCP)
+├── agentic-ai-core-concept.md # 45 core concepts explained (plain English)
+├── difference.md              # Architecture comparison of all 5 levels
+├── all-agentic-ai-concepts.md # Additional reference material
+├── core-concept.md            # Core concept summaries
+└── README.md                  # This file
 ```
 
 ---
 
-## 📋 Prerequisites
+## 🚀 Quick Start
 
-| Tool | Version | Install Command |
-|------|---------|-----------------|
-| **Docker** | 24+ | `brew install docker` / [docker.com](https://docker.com) |
-| **KIND** | 0.22+ | `brew install kind` / `go install sigs.k8s.io/kind@latest` |
-| **kubectl** | 1.28+ | `brew install kubectl` |
-| **Python** | 3.10+ | `brew install python` |
-| **Ollama** | Latest | `brew install ollama` / [ollama.com](https://ollama.com) |
+### Prerequisites
 
----
+| Tool | Version | Purpose |
+|------|---------|---------|
+| **Python** | 3.10+ | Runtime |
+| **Ollama** | Latest | Local LLM server (or OpenAI API key) |
+| **pip** | Latest | Package manager |
 
-## 🚀 Step-by-Step Deployment to KIND
-
-### Step 1: Create KIND Cluster
-
-```bash
-# Create a KIND cluster with extra port mappings for MCP access
-cat <<EOF > kind-config.yaml
-kind: Cluster
-apiVersion: kind.x-k8s.io/v1alpha4
-nodes:
-- role: control-plane
-  extraPortMappings:
-  - containerPort: 11434  # Ollama port (if running in cluster)
-    hostPort: 11434
-    protocol: TCP
-EOF
-
-kind create cluster --name k8s-agent-demo --config kind-config.yaml
-
-# Verify cluster
-kubectl cluster-info --context kind-k8s-agent-demo
-kubectl get nodes
-```
-
-### Step 2: Install Python Dependencies
+### Install Dependencies
 
 ```bash
 # Create virtual environment (recommended)
 python3 -m venv venv
 source venv/bin/activate
 
-# Install dependencies
+# Install base dependencies (for L0-L2)
 pip install --upgrade pip
-pip install kubernetes langchain langgraph langchain-chroma langchain-huggingface langchain-ollama chromadb sentence-transformers
+pip install ollama langchain langchain-ollama langchain-core langchain-mcp-adapters fastmcp
 
-# Verify imports work
-python3 -c "
-import kubernetes, langchain, langgraph, chromadb, sentence_transformers
-print('✅ All dependencies installed')
-"
+# For L3 (kubernetes-agent.py) - additional dependencies
+pip install langgraph langchain-chroma langchain-huggingface chromadb sentence-transformers kubernetes
 ```
 
-### Step 3: Start Ollama (Local LLM)
+> **Note**: For L3, you'll also need a running Kubernetes cluster (KIND, minikube, or cloud) and `kubectl` configured. Or use the mock LLM fallback for testing without a cluster.
+
+### Start Ollama (for local LLM)
 
 ```bash
-# Start Ollama server (in background)
 ollama serve &
-
-# Wait a moment, then pull a model
-sleep 3
 ollama pull llama3.1
-
-# Test it works
-ollama run llama3.1 "Hello, respond in one sentence."
 ```
 
-> **Alternative**: Use OpenAI instead by setting `export OPENAI_API_KEY=sk-...` and installing `langchain-openai`
-
-### Step 4: Prepare the Agent Files
-
-```bash
-# Navigate to agent directory
-cd /Users/zeeshankanuga/Zeeshan/DevOps/agentic-ai/demo/agent
-
-# Verify files exist
-ls -la kubernetes-agent.py README.md
-```
-
-### Step 5: Run Agent Locally (Test First)
-
-```bash
-# Test the agent runs without errors (will wait for stdin)
-timeout 5 python3 kubernetes-agent.py <<< '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}'
-
-# Should output JSON-RPC response with server info
-```
-
-### Step 6: Deploy Agent to KIND as a Pod
-
-#### 6a: Build Docker Image
-
-```dockerfile
-# Dockerfile (create this in agent directory)
-FROM python:3.11-slim
-
-WORKDIR /app
-
-# Install system dependencies
-RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
-
-# Copy and install Python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Copy agent code
-COPY kubernetes-agent.py .
-
-# Run as non-root (K8s best practice)
-RUN useradd -m -u 1000 agent && chown -R agent:agent /app
-USER agent
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD python3 -c "import kubernetes; print('ok')" || exit 1
-
-ENTRYPOINT ["python3", "kubernetes-agent.py"]
-```
-
-```bash
-# Create requirements.txt
-cat <<EOF > requirements.txt
-kubernetes==30.0.0
-langchain==0.2.0
-langgraph==0.2.0
-langchain-chroma==0.1.0
-langchain-huggingface==0.1.0
-langchain-ollama==0.1.0
-chromadb==0.5.0
-sentence-transformers==3.0.0
-EOF
-
-# Build image
-docker build -t k8s-learning-agent:latest .
-
-# Load into KIND cluster (required for KIND)
-kind load docker-image k8s-learning-agent:latest --name k8s-agent-demo
-```
-
-#### 6b: Create RBAC for Agent
-
-```yaml
-# rbac.yaml - Permissions for the agent to read K8s resources
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: k8s-agent
-  namespace: default
 ---
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: k8s-agent-reader
-rules:
-- apiGroups: [""]
-  resources: ["pods", "pods/log", "pods/exec", "services", "endpoints", "events", "configmaps", "namespaces", "nodes"]
-  verbs: ["get", "list", "watch"]
-- apiGroups: ["apps"]
-  resources: ["deployments", "replicasets", "statefulsets", "daemonsets"]
-  verbs: ["get", "list", "watch"]
-- apiGroups: ["networking.k8s.io"]
-  resources: ["ingresses", "networkpolicies"]
-  verbs: ["get", "list", "watch"]
-- apiGroups: ["metrics.k8s.io"]
-  resources: ["pods"]
-  verbs: ["get", "list"]
+
+## 📚 Learning Path — Run in Order
+
+### Level 0: Pure LLM Completion
+```bash
+python3 01-generative_ai.py
+```
+- Simple chat loop with system prompt
+- No tools, no memory, no reasoning loop
+- **Concepts**: Tokenization, Transformer, Attention, LLM, RLHF
+
+### Level 1: ReAct Agent with Direct Tools
+```bash
+python3 02-agent.py
+```
+- Agent reasons, calls tools, observes, repeats
+- Tools defined inline with `@tool` decorator
+- Uses `subprocess` to call Docker CLI
+- **Concepts**: Tool Calling, ReAct Pattern, Chain of Thought, Direct Integration
+
+### Level 1b: MCP Server (Tool Provider)
+```bash
+python3 03-mcp_server.py
+```
+- Exposes same Docker tools via MCP protocol
+- Run this in one terminal, keep it running
+- **Concepts**: MCP Protocol, MCP Server, JSON-RPC over stdio
+
+### Level 2: MCP Client Agent
+```bash
+# Terminal 1: Start MCP server
+python3 03-mcp_server.py
+
+# Terminal 2: Run MCP client agent
+python3 04-agent_with_mcp.py
+```
+- Discovers tools dynamically from MCP server
+- Same ReAct agent, different tool source
+- Async communication via stdio
+- **Concepts**: MCP Client, Dynamic Tool Discovery, Async Execution
+
+### Level 3: Full Agentic System
+```bash
+# Option A: Run as CLI agent (interactive)
+python3 05-kubernetes-agent.py
+
+# Option B: Run as MCP server (for other agents to consume)
+# The file includes both modes - see code for MCPServer class
+```
+- LangGraph multi-node workflow (5 nodes)
+- RAG with ChromaDB + MiniLM embeddings
+- Typed state management (TypedDict)
+- Kubernetes API tools (or mock for testing)
+- Custom MCP server implementation
+- **Concepts**: LangGraph, StateGraph, Nodes/Edges, RAG, Vector DB, Embeddings, API Tools, Class-based Tools, Structured Results, Multi-LLM Factory, Custom MCP, Agent-as-MCP, Logging, Error Handling
+
 ---
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: k8s-agent-binding
-subjects:
-- kind: ServiceAccount
-  name: k8s-agent
-  namespace: default
-roleRef:
-  kind: ClusterRole
-  name: k8s-agent-reader
-  apiGroup: rbac.authorization.k8s.io
+
+## 📖 Documentation Files
+
+| File | Purpose |
+|------|---------|
+| **`agentic-ai-core-concept.md`** | 45 core concepts explained in plain English with analogies, examples, and learning sequence |
+| **`difference.md`** | Detailed architecture comparison of all 5 levels with code structure, pros/cons, and progression summary |
+| **`all-agentic-ai-concepts.md`** | Additional reference material |
+| **`core-concept.md`** | Core concept summaries |
+
+---
+
+## 🔑 Key Concepts by Level
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         COMPLEXITY EVOLUTION                                │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  L0: generative_ai.py       →  LLM only (completion)                      │
+│       │                                                                │
+│       ▼                                                                │
+│  L1: agent.py               →  ReAct + Direct Tools                     │
+│       │                                                                │
+│       ├──▶ L1b: mcp_server.py    →  MCP Server (protocol)              │
+│       │                                                                │
+│       └──▶ L2: agent_with_mcp.py →  MCP Client (consumes protocol)     │
+│                                                                │
+│       ▼                                                                │
+│  L3: kubernetes-agent.py    →  Full System                             │
+│       ┌──────┐ ┌──────┐ ┌────────┐ ┌────────┐ ┌────────┐              │
+│       │Rewrite│→│Retrieve│→│ Decide │→│ Execute│→│Synthesize│          │
+│       │ Query │  │ (RAG)  │  │ Action │  │ Tools  │  │ Answer   │          │
+│       └──────┘ └──────┘ └────────┘ └────────┘ └────────┘              │
+│            │         │          │           │          │                │
+│            ▼         ▼          ▼           ▼          ▼                │
+│       KnowledgeBase  │    KubernetesTools    │    MCP Server           │
+│       (ChromaDB)     │    (K8s API)          │    (JSON-RPC)           │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-```bash
-kubectl apply -f rbac.yaml
-```
+---
 
-#### 6c: Deploy Agent Pod
+## 🛠️ Customization Ideas
 
-```yaml
-# agent-pod.yaml
-apiVersion: v1
-kind: Pod
-metadata:
-  name: k8s-learning-agent
-  namespace: default
-  labels:
-    app: k8s-learning-agent
-spec:
-  serviceAccountName: k8s-agent
-  containers:
-  - name: agent
-    image: k8s-learning-agent:latest
-    imagePullPolicy: Never  # Critical for KIND local image
-    resources:
-      requests:
-        memory: "512Mi"
-        cpu: "250m"
-      limits:
-        memory: "1Gi"
-        cpu: "1000m"
-    env:
-    - name: PYTHONUNBUFFERED
-      value: "1"
-  restartPolicy: OnFailure
-```
-
-```bash
-kubectl apply -f agent-pod.yaml
-
-# Wait for pod to be ready
-kubectl wait --for=condition=Ready pod/k8s-learning-agent --timeout=60s
-
-# Check logs
-kubectl logs k8s-learning-agent
-```
-
-### Step 7: Test Agent from Inside Cluster
-
-```bash
-# Exec into the agent pod and test MCP communication
-kubectl exec -i k8s-learning-agent -- python3 -c "
-import json, sys
-# Send initialize request
-print(json.dumps({'jsonrpc':'2.0','id':1,'method':'initialize','params':{}}), flush=True)
-" | head -20
-```
-
-### Step 8: Connect from Your Machine (Port Forward)
-
-Since MCP uses stdio, we need a bridge. Create a simple client:
-
+### Add Tools to Level 1 (`02-agent.py`)
 ```python
-# test_client.py - Run on your LOCAL machine
-import json
-import subprocess
-import sys
+@tool
+def my_custom_tool(input: str) -> str:
+    """Description for the LLM."""
+    return f"Processed: {input}"
 
-def test_agent():
-    # Use kubectl exec as transport to talk to agent in cluster
-    proc = subprocess.Popen(
-        ["kubectl", "exec", "-i", "k8s-learning-agent", "--", "python3", "kubernetes-agent.py"],
-        stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True
-    )
-    
-    # 1. Initialize
-    req = {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}}
-    proc.stdin.write(json.dumps(req) + "\n")
-    proc.stdin.flush()
-    resp = json.loads(proc.stdout.readline())
-    print("Initialize:", json.dumps(resp, indent=2))
-    
-    # 2. List tools
-    req = {"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}}
-    proc.stdin.write(json.dumps(req) + "\n")
-    proc.stdin.flush()
-    resp = json.loads(proc.stdout.readline())
-    print("\nTools:", json.dumps(resp, indent=2))
-    
-    # 3. Call tool via agent (natural language)
-    req = {
-        "jsonrpc": "2.0", "id": 3, "method": "tools/call",
-        "params": {"name": "list_pods", "arguments": {"namespace": "default"}}
-    }
-    proc.stdin.write(json.dumps(req) + "\n")
-    proc.stdin.flush()
-    resp = json.loads(proc.stdout.readline())
-    print("\nList Pods Result:", json.dumps(resp, indent=2))
-    
-    proc.terminate()
-
-if __name__ == "__main__":
-    test_agent()
+tools = [running_containers, container_logs_by_name, my_custom_tool]
 ```
 
-```bash
-python3 test_client.py
-```
-
----
-
-## 🧪 Testing the Agent
-
-### Test 1: List Pods
-```json
-{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"list_pods","arguments":{"namespace":"default"}}}
-```
-
-### Test 2: Analyze a Problematic Pod
-
-First, create a failing pod:
-```bash
-kubectl run crash-loop --image=busybox --restart=Always -- /bin/sh -c "exit 1"
-```
-
-Then analyze:
-```json
-{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"analyze_pod","arguments":{"pod_name":"crash-loop","namespace":"default"}}}
-```
-
-### Test 3: Get Logs
-```json
-{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"get_pod_logs","arguments":{"pod_name":"crash-loop","namespace":"default","tail_lines":20}}}
-```
-
-### Test 4: Natural Language Query (Full Agent)
-```json
-{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"list_pods","arguments":{"namespace":"kube-system"}}}
-```
-The agent will:
-1. Rewrite query → "Kubernetes troubleshooting: list pods in kube-system"
-2. Retrieve → Search vector DB for relevant K8s knowledge
-3. Decide → LLM chooses `list_pods` tool
-4. Execute → Run tool on cluster
-5. Synthesize → Return formatted answer with context
-
----
-
-## 📚 Understanding the Code
-
-### Key Files
-
-```
-agent/
-├── kubernetes-agent.py   # Complete agent (single file for learning)
-├── requirements.txt      # Python dependencies
-├── Dockerfile           # Container image
-├── rbac.yaml           # K8s permissions
-├── agent-pod.yaml      # Pod deployment
-├── kind-config.yaml    # KIND cluster config
-└── test_client.py      # Test script
-```
-
-### Core Classes
-
-| Class | Purpose | Key Methods |
-|-------|---------|-------------|
-| `KubernetesManager` | K8s connection | `initialize()`, `is_ready()` |
-| `KnowledgeBase` | Vector DB + Embeddings | `add_knowledge()`, `search()` |
-| `KubernetesTools` | 3 MCP Tools | `list_pods()`, `get_pod_logs()`, `analyze_pod()` |
-| `MCPServer` | JSON-RPC Server | `handle_request()`, `run()` |
-| `AgentState` | LangGraph State | TypedDict with 7 fields |
-
-### LangGraph Nodes Explained
-
+### Add Tools to MCP Server (`03-mcp_server.py`)
 ```python
-# 1. REWRITE QUERY - Optimize for retrieval
-def rewrite_query(state):
-    # "Why is my pod crashing?" → "Kubernetes troubleshooting: pod crashing CrashLoopBackOff"
-
-# 2. RETRIEVE - Semantic search in ChromaDB
-def retrieve(state):
-    # Embed query → Find similar vectors → Return top 3 chunks
-
-# 3. DECIDE ACTION - LLM reasoning
-def decide_action(state):
-    # LLM sees: context + tools + query
-    # Returns: {"action": "tool_call", "tool": "analyze_pod", "args": {...}}
-
-# 4. EXECUTE TOOLS - Run on real cluster
-def execute_tools(state):
-    # Call Kubernetes API → Return structured results
-
-# 5. SYNTHESIZE - Final answer
-def synthesize(state):
-    # Combine tool results + knowledge → Human-readable answer
+@mcp.tool
+def my_custom_tool(input: str) -> str:
+    """Description for the LLM."""
+    return f"Processed: {input}"
 ```
 
----
-
-## 🔧 Customization Guide
-
-### Add More Tools
-
+### Extend Level 3 Knowledge Base
 ```python
-# In KubernetesTools class
-def get_events(self, namespace: str = "default") -> Dict:
-    """Get recent Kubernetes events."""
-    events = self.k8s.core_v1.list_namespaced_event(namespace=namespace)
-    return {"events": [{"type": e.type, "reason": e.reason, "message": e.message} for e in events.items]}
-
-# Add to get_tool_definitions():
-MCPTool(
-    name="get_events",
-    description="Get recent Kubernetes events in a namespace",
-    input_schema={"type": "object", "properties": {"namespace": {"type": "string", "default": "default"}}, "required": []}
-)
-```
-
-### Add More Knowledge to Vector DB
-
-```python
-# In setup_knowledge_base()
+# In KnowledgeBase.add_knowledge()
 knowledge_docs.append({
-    "source": "my-runbooks",
-    "topic": "database-troubleshooting",
-    "content": """PostgreSQL Troubleshooting:
-- Connection refused: Check service, port, network policy
-- Slow queries: Check pg_stat_statements, add indexes
-- Lock contention: Check pg_locks, long transactions"""
+    "source": "my-docs",
+    "topic": "my-topic",
+    "content": "Your domain knowledge here..."
 })
 ```
 
-### Use Different LLM
-
+### Switch LLM Provider (Level 3)
 ```python
-# In create_llm()
-# For OpenAI:
-export OPENAI_API_KEY=sk-...
-# For other Ollama models:
-return ChatOllama(model="qwen2.5:7b", temperature=0)
-# For Anthropic:
-from langchain_anthropic import ChatAnthropic
-return ChatAnthropic(model="claude-3-haiku-20240307")
+# In create_llm() - uncomment for OpenAI
+# export OPENAI_API_KEY=sk-...
+# return ChatOpenAI(model="gpt-4o-mini", temperature=0)
+
+# Or use different Ollama model
+# return ChatOllama(model="qwen2.5:7b", temperature=0)
 ```
 
 ---
 
-## 🐛 Troubleshooting
+## 🐛 Common Issues
 
 | Issue | Solution |
 |-------|----------|
-| `ImagePullBackOff` for agent pod | Run `kind load docker-image k8s-learning-agent:latest --name k8s-agent-demo` |
-| `Permission denied` on K8s API | Check RBAC: `kubectl auth can-i get pods --as=system:serviceaccount:default:k8s-agent` |
-| `ModuleNotFoundError: langchain` | Install in venv: `pip install -r requirements.txt` |
-| Ollama connection failed | Ensure `ollama serve` running, check `curl http://localhost:11434/api/tags` |
-| Vector DB empty | Run `setup_knowledge_base(kb)` on startup (already in main) |
-| Agent returns mock responses | Install Ollama + pull model, or set `OPENAI_API_KEY` |
+| `ModuleNotFoundError` | Activate venv and `pip install -r requirements.txt` (or install packages per level) |
+| Ollama connection failed | Ensure `ollama serve` is running; check `curl http://localhost:11434/api/tags` |
+| MCP server not found | Run `03-mcp_server.py` in separate terminal before `04-agent_with_mcp.py` |
+| K8s permission errors (L3) | Configure RBAC or use mock LLM fallback (no cluster needed) |
+| ChromaDB empty (L3) | Knowledge base auto-populates on first run; check `./chroma_db` directory |
 
 ---
 
-## 📖 Learning Resources
+## 📖 Further Reading
 
-### Agentic AI Concepts
-- [LangGraph Documentation](https://langchain-ai.github.io/langgraph/)
-- [MCP Specification](https://modelcontextprotocol.io/)
-- [RAG Pattern](https://www.pinecone.io/learn/retrieval-augmented-generation/)
-
-### Kubernetes Debugging
-- [kubectl Cheat Sheet](https://kubernetes.io/docs/reference/kubectl/cheatsheet/)
-- [Pod Lifecycle](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/)
-- [Troubleshooting Guide](https://kubernetes.io/docs/tasks/debug/debug-application/)
-
-### Vector Databases
-- [ChromaDB Docs](https://docs.trychroma.com/)
-- [Embeddings Guide](https://www.sbert.net/)
-- [Chunking Strategies](https://python.langchain.com/docs/modules/data_connection/document_transformers/)
-
----
-
-## 🎓 Next Steps for Learning
-
-1. **Add Memory**: Implement conversation history in `AgentState`
-2. **Add Planning**: Multi-step tool calls for complex tasks
-3. **Add Evaluation**: Score answer quality, retry on low confidence
-4. **Add Human-in-the-loop**: Ask for confirmation before destructive actions
-5. **Scale Up**: Deploy as Deployment with multiple replicas
-6. **Add Metrics**: Prometheus metrics for tool usage, latency, errors
+- **LangGraph**: https://langchain-ai.github.io/langgraph/
+- **MCP Specification**: https://modelcontextprotocol.io/
+- **RAG Pattern**: https://www.pinecone.io/learn/retrieval-augmented-generation/
+- **ChromaDB**: https://docs.trychroma.com/
+- **Kubernetes Python Client**: https://github.com/kubernetes-client/python
 
 ---
 
 ## 📄 License
 
-MIT License - Educational use encouraged!
+MIT License — Educational use encouraged!
 
 ---
 
-**Built for learning Agentic AI with real Kubernetes integration** 🚀
+**Built for learning Agentic AI concepts progressively** 🚀
