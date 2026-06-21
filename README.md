@@ -1,253 +1,463 @@
-# Agentic AI Concepts — Learning Progression
+# Agentic AI Concepts - Progressive Learning Repository
 
-A hands-on educational repository demonstrating **core Agentic AI concepts** through 5 progressive implementations, from basic LLM completion to a full agentic system.
+A step-by-step educational journey from basic LLM chat to production-ready Kubernetes agent. Each file builds on the previous, introducing one core concept at a time.
 
-## 🎯 Learning Objectives
-
-This project teaches you how Agentic AI works end-to-end by building increasingly sophisticated agents:
-
-| Level | File | Concept | Key Learning |
-|-------|------|---------|--------------|
-| **0** | `01-generative_ai.py` | Pure LLM Completion | Stateless chat, no tools, no memory |
-| **1** | `02-agent.py` | ReAct Agent (Direct Tools) | Reasoning + Acting loop with inline tools |
-| **1b** | `03-mcp_server.py` | MCP Server (Tool Provider) | Exposing tools via Model Context Protocol |
-| **2** | `04-agent_with_mcp.py` | MCP Client Agent | Consuming MCP tools from external server |
-| **3** | `05-kubernetes-agent.py` | Full Agentic System | LangGraph workflow, RAG, typed state, MCP server |
-
----
-
-## 📁 Directory Structure
+## 🎯 Learning Path
 
 ```
-agentic-ai-concepts/
-├── 01-generative_ai.py       # L0: Pure LLM completion (Ollama)
-├── 02-agent.py               # L1: ReAct agent with direct @tool functions
-├── 03-mcp_server.py          # L1b: FastMCP server exposing Docker tools
-├── 04-agent_with_mcp.py      # L2: MCP client agent consuming tools via stdio
-├── 05-kubernetes-agent.py    # L3: Full agentic system (LangGraph + RAG + MCP)
-├── agentic-ai-core-concept.md # 45 core concepts explained (plain English)
-├── difference.md              # Architecture comparison of all 5 levels
-├── all-agentic-ai-concepts.md # Additional reference material
-├── core-concept.md            # Core concept summaries
-└── README.md                  # This file
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  LEVEL 1:  Basic LLM Chat                  →  ollama.chat()                │
+│  LEVEL 2:  Tool-Using Agent                →  @tool + create_agent()       │
+│  LEVEL 3:  MCP Server                      →  FastMCP + @mcp.tool          │
+│  LEVEL 4:  Agent + MCP Client              →  MultiServerMCPClient         │
+│  LEVEL 5a: Conversation Memory             →  Message history + sliding    │
+│  LEVEL 5b: Async + Streaming + Concurrent  →  asyncio + callbacks          │
+│  LEVEL 5c: RAG (Retrieval-Augmented Gen)   →  Embedding + Vector Search    │
+│  LEVEL 5d: LangGraph Workflow              →  StateGraph + Nodes/Edges     │
+│  LEVEL 5e: Class-Based Structured Tools    →  BaseTool + ToolResult        │
+│  LEVEL 5f: Multi-Step Reasoning            →  Plan→Think→Act→Observe→Reflect│
+│  LEVEL 6:  Production K8s Agent            →  Real K8s + ChromaDB + MCP    │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
----
+## 📁 File Structure
+
+| File | Concept | Difficulty | Prerequisites |
+|------|---------|------------|---------------|
+| `01-generative_ai.py` | Basic LLM loop | ⭐ | ollama |
+| `02-agent.py` | Tools + Agent | ⭐⭐ | langchain, ollama |
+| `03-mcp_server.py` | MCP Server | ⭐⭐ | fastmcp |
+| `04-agent_with_mcp.py` | MCP Client | ⭐⭐ | langchain-mcp-adapters |
+| `05a-agent-with-memory.py` | Memory | ⭐⭐⭐ | Level 4 |
+| `05b-async-agent.py` | Async Patterns | ⭐⭐⭐ | Level 5a |
+| `05c-agent-with-rag.py` | RAG | ⭐⭐⭐ | Level 5a |
+| `05d-langgraph-basics.py` | LangGraph | ⭐⭐⭐⭐ | Level 5a |
+| `05e-class-based-tools.py` | Structured Tools | ⭐⭐⭐⭐ | Level 5a |
+| `05f-multi-step-agent.py` | Multi-Step Reasoning | ⭐⭐⭐⭐ | Level 5d |
+| `06-kubernetes-agent.py` | Production System | ⭐⭐⭐⭐⭐ | Level 5f + K8s |
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 
-| Tool | Version | Purpose |
-|------|---------|---------|
-| **Python** | 3.10+ | Runtime |
-| **Ollama** | Latest | Local LLM server (or OpenAI API key) |
-| **pip** | Latest | Package manager |
-
-### Install Dependencies
-
 ```bash
-# Create virtual environment (recommended)
-python3 -m venv venv
-source venv/bin/activate
+# Core dependencies (Levels 1-5)
+pip install ollama langchain-ollama langchain-core langgraph fastmcp langchain-mcp-adapters
 
-# Install base dependencies (for L0-L2)
-pip install --upgrade pip
-pip install ollama langchain langchain-ollama langchain-core langchain-mcp-adapters fastmcp
+# Level 6 (Production)
+pip install kubernetes chromadb sentence-transformers langchain-chroma langchain-huggingface
 
-# For L3 (kubernetes-agent.py) - additional dependencies
-pip install langgraph langchain-chroma langchain-huggingface chromadb sentence-transformers kubernetes
+# Start Ollama (for local LLM)
+ollama serve
+ollama pull gemma4:e4b  # or llama3.1, qwen2.5
 ```
 
-> **Note**: For L3, you'll also need a running Kubernetes cluster (KIND, minikube, or cloud) and `kubectl` configured. Or use the mock LLM fallback for testing without a cluster.
-
-### Start Ollama (for local LLM)
+### Run Each Level
 
 ```bash
-ollama serve &
-ollama pull llama3.1
+# Level 1: Basic chat
+python 01-generative_ai.py
+
+# Level 2: Agent with local tools
+python 02-agent.py
+
+# Level 3: MCP Server (run in separate terminal)
+python 03-mcp_server.py
+
+# Level 4: Agent using MCP tools
+python 04-agent_with_mcp.py
+
+# Level 5a: Agent with memory
+python 05a-agent-with-memory.py
+
+# Level 5b: Async agent with streaming
+python 05b-async-agent.py
+python 05b-async-agent.py --demo  # See concurrent execution
+
+# Level 5c: RAG-enabled agent
+python 05c-agent-with-rag.py
+python 05c-agent-with-rag.py --demo  # See retrieval in action
+
+# Level 5d: LangGraph workflow
+python 05d-langgraph-basics.py
+python 05d-langgraph-basics.py --demo
+
+# Level 5e: Structured tools
+python 05e-class-based-tools.py
+python 05e-class-based-tools.py --demo
+
+# Level 5f: Multi-step reasoning
+python 05f-multi-step-agent.py
+python 05f-multi-step-agent.py --demo
+
+# Level 6: Production K8s agent (requires K8s cluster)
+python 06-kubernetes-agent.py
 ```
+
+## 📚 Level-by-Level Guide
+
+### Level 1: Generative AI Basics (`01-generative_ai.py`)
+
+**Concept**: Simple request/response loop with system prompt.
+
+```python
+# Core pattern
+while True:
+    user_input = input("Enter your message:\n")
+    response = ollama.chat(model="gemma4:e4b", messages=[system, user])
+    print(response['message']['content'])
+```
+
+**Key Learn**: LLM as a function: `input → output`
 
 ---
 
-## 📚 Learning Path — Run in Order
+### Level 2: Tool-Using Agent (`02-agent.py`)
 
-### Level 0: Pure LLM Completion
-```bash
-python3 01-generative_ai.py
-```
-- Simple chat loop with system prompt
-- No tools, no memory, no reasoning loop
-- **Concepts**: Tokenization, Transformer, Attention, LLM, RLHF
+**Concept**: LLM decides when to call functions (tools).
 
-### Level 1: ReAct Agent with Direct Tools
-```bash
-python3 02-agent.py
-```
-- Agent reasons, calls tools, observes, repeats
-- Tools defined inline with `@tool` decorator
-- Uses `subprocess` to call Docker CLI
-- **Concepts**: Tool Calling, ReAct Pattern, Chain of Thought, Direct Integration
-
-### Level 1b: MCP Server (Tool Provider)
-```bash
-python3 03-mcp_server.py
-```
-- Exposes same Docker tools via MCP protocol
-- Run this in one terminal, keep it running
-- **Concepts**: MCP Protocol, MCP Server, JSON-RPC over stdio
-
-### Level 2: MCP Client Agent
-```bash
-# Terminal 1: Start MCP server
-python3 03-mcp_server.py
-
-# Terminal 2: Run MCP client agent
-python3 04-agent_with_mcp.py
-```
-- Discovers tools dynamically from MCP server
-- Same ReAct agent, different tool source
-- Async communication via stdio
-- **Concepts**: MCP Client, Dynamic Tool Discovery, Async Execution
-
-### Level 3: Full Agentic System
-```bash
-# Option A: Run as CLI agent (interactive)
-python3 05-kubernetes-agent.py
-
-# Option B: Run as MCP server (for other agents to consume)
-# The file includes both modes - see code for MCPServer class
-```
-- LangGraph multi-node workflow (5 nodes)
-- RAG with ChromaDB + MiniLM embeddings
-- Typed state management (TypedDict)
-- Kubernetes API tools (or mock for testing)
-- Custom MCP server implementation
-- **Concepts**: LangGraph, StateGraph, Nodes/Edges, RAG, Vector DB, Embeddings, API Tools, Class-based Tools, Structured Results, Multi-LLM Factory, Custom MCP, Agent-as-MCP, Logging, Error Handling
-
----
-
-## 📖 Documentation Files
-
-| File | Purpose |
-|------|---------|
-| **`agentic-ai-core-concept.md`** | 45 core concepts explained in plain English with analogies, examples, and learning sequence |
-| **`difference.md`** | Detailed architecture comparison of all 5 levels with code structure, pros/cons, and progression summary |
-| **`all-agentic-ai-concepts.md`** | Additional reference material |
-| **`core-concept.md`** | Core concept summaries |
-
----
-
-## 🔑 Key Concepts by Level
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                         COMPLEXITY EVOLUTION                                │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│  L0: generative_ai.py       →  LLM only (completion)                      │
-│       │                                                                │
-│       ▼                                                                │
-│  L1: agent.py               →  ReAct + Direct Tools                     │
-│       │                                                                │
-│       ├──▶ L1b: mcp_server.py    →  MCP Server (protocol)              │
-│       │                                                                │
-│       └──▶ L2: agent_with_mcp.py →  MCP Client (consumes protocol)     │
-│                                                                │
-│       ▼                                                                │
-│  L3: kubernetes-agent.py    →  Full System                             │
-│       ┌──────┐ ┌──────┐ ┌────────┐ ┌────────┐ ┌────────┐              │
-│       │Rewrite│→│Retrieve│→│ Decide │→│ Execute│→│Synthesize│          │
-│       │ Query │  │ (RAG)  │  │ Action │  │ Tools  │  │ Answer   │          │
-│       └──────┘ └──────┘ └────────┘ └────────┘ └────────┘              │
-│            │         │          │           │          │                │
-│            ▼         ▼          ▼           ▼          ▼                │
-│       KnowledgeBase  │    KubernetesTools    │    MCP Server           │
-│       (ChromaDB)     │    (K8s API)          │    (JSON-RPC)           │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## 🛠️ Customization Ideas
-
-### Add Tools to Level 1 (`02-agent.py`)
 ```python
 @tool
-def my_custom_tool(input: str) -> str:
-    """Description for the LLM."""
-    return f"Processed: {input}"
+def running_containers():
+    """Tool:1 Show running Containers"""
+    result = subprocess.run(["docker", "ps", "-q"], capture_output=True, text=True)
+    return result.stdout
 
-tools = [running_containers, container_logs_by_name, my_custom_tool]
+agent = create_agent(llm, tools)  # LLM + Tools = Agent
+response = agent.invoke({"messages": [{"role": "user", "content": user_input}]})
 ```
 
-### Add Tools to MCP Server (`03-mcp_server.py`)
+**Key Learn**: **Agent = LLM + Tools**. LLM reasons about *which* tool to use.
+
+---
+
+### Level 3: MCP Server (`03-mcp_server.py`)
+
+**Concept**: Expose tools as a standard service (Model Context Protocol).
+
 ```python
+from fastmcp import FastMCP
+
+mcp = FastMCP("Docker MCP Server")
+
 @mcp.tool
-def my_custom_tool(input: str) -> str:
-    """Description for the LLM."""
-    return f"Processed: {input}"
+def running_containers():
+    """Tool:1 Show running Containers"""
+    # ... same logic ...
+
+if __name__ == "__main__":
+    mcp.run()  # Listens on stdio for JSON-RPC
 ```
 
-### Extend Level 3 Knowledge Base
+**Key Learn**: Tools become **language-agnostic services** via MCP.
+
+---
+
+### Level 4: Agent + MCP Client (`04-agent_with_mcp.py`)
+
+**Concept**: Agent discovers and uses remote MCP tools.
+
 ```python
-# In KnowledgeBase.add_knowledge()
-knowledge_docs.append({
-    "source": "my-docs",
-    "topic": "my-topic",
-    "content": "Your domain knowledge here..."
+client = MultiServerMCPClient({
+    "docker-mcp": {"transport": "stdio", "command": "python3", "args": ["03-mcp_server.py"]}
 })
+tools = await client.get_tools()  # Dynamic tool discovery
+agent = create_agent(llm, tools)
 ```
 
-### Switch LLM Provider (Level 3)
+**Key Learn**: **Decouple** tool providers from tool consumers.
+
+---
+
+### Level 5a: Conversation Memory (`05a-agent-with-memory.py`)
+
+**Concept**: Maintain message history across turns.
+
 ```python
-# In create_llm() - uncomment for OpenAI
-# export OPENAI_API_KEY=sk-...
-# return ChatOpenAI(model="gpt-4o-mini", temperature=0)
+messages = [SystemMessage(content=SYSTEM_PROMPT)]
 
-# Or use different Ollama model
-# return ChatOllama(model="qwen2.5:7b", temperature=0)
+while True:
+    user_input = input("You: ")
+    messages.append(HumanMessage(content=user_input))
+    
+    # Context window management (sliding window)
+    if len(messages) > MAX_MESSAGES:
+        messages = [messages[0]] + messages[-(MAX_MESSAGES - 1):]
+    
+    response = await agent.ainvoke({"messages": messages})
+    messages.append(response['messages'][-1])  # Add AI response to history
 ```
 
----
-
-## 🐛 Common Issues
-
-| Issue | Solution |
-|-------|----------|
-| `ModuleNotFoundError` | Activate venv and `pip install -r requirements.txt` (or install packages per level) |
-| Ollama connection failed | Ensure `ollama serve` is running; check `curl http://localhost:11434/api/tags` |
-| MCP server not found | Run `03-mcp_server.py` in separate terminal before `04-agent_with_mcp.py` |
-| K8s permission errors (L3) | Configure RBAC or use mock LLM fallback (no cluster needed) |
-| ChromaDB empty (L3) | Knowledge base auto-populates on first run; check `./chroma_db` directory |
+**Key Learn**: **Stateful conversations** via message list + context window.
 
 ---
+
+### Level 5b: Async + Streaming + Concurrent (`05b-async-agent.py`)
+
+**Concept**: Production async patterns.
+
+```python
+class AsyncDockerAgent:
+    async def __aenter__(self):
+        self.client = MultiServerMCPClient(...)
+        tools = await self.client.get_tools()
+        self.agent = create_agent(llm, tools, callbacks=[StreamingCallbackHandler()])
+        return self
+    
+    async def __aexit__(self, *args):
+        await self.client.close()
+    
+    async def run_concurrent_queries(self, queries):
+        # Run multiple queries IN PARALLEL
+        return await asyncio.gather(*[self.single_query(q) for q in queries])
+```
+
+**Key Learn**: **AsyncContextManager**, **StreamingCallbacks**, **asyncio.gather** for concurrency.
+
+---
+
+### Level 5c: RAG (Retrieval-Augmented Generation) (`05c-agent-with-rag.py`)
+
+**Concept**: Retrieve relevant knowledge before generating.
+
+```
+User Query → Embedding → Vector Search → Top-K Chunks → Augmented Prompt → LLM
+```
+
+```python
+class InMemoryKnowledgeBase:
+    def search(self, query, k=3):
+        # TF-IDF style scoring (no external deps)
+        results = []
+        for doc in self.documents:
+            for chunk in doc.chunks:
+                score = self.embedder.score(query, chunk)
+                if score > 0:
+                    results.append(RetrievalResult(doc, chunk, score))
+        return sorted(results, key=lambda r: r.score, reverse=True)[:k]
+
+# Augment prompt with retrieved context
+augmented_prompt = f"""
+{retrieved_context}
+
+USER QUESTION: {user_query}
+"""
+```
+
+**Key Learn**: **Chunking**, **Embedding**, **Retrieval**, **Prompt Augmentation** - the RAG pipeline.
+
+---
+
+### Level 5d: LangGraph Workflow (`05d-langgraph-basics.py`)
+
+**Concept**: Explicit graph of nodes with shared state.
+
+```python
+class AgentState(TypedDict):
+    user_query: str
+    rewritten_query: str
+    retrieved_context: str
+    tool_calls: List[Dict]
+    tool_results: List[Dict]
+    final_answer: str
+
+def rewrite_query(state): ...
+def retrieve(state): ...
+def decide_action(state): ...
+def execute_tools(state): ...
+def synthesize(state): ...
+
+workflow = StateGraph(AgentState)
+workflow.add_node("rewrite_query", rewrite_query)
+workflow.add_node("retrieve", retrieve)
+workflow.add_node("decide_action", decide_action)
+workflow.add_node("execute_tools", execute_tools)
+workflow.add_node("synthesize", synthesize)
+
+workflow.set_entry_point("rewrite_query")
+workflow.add_edge("rewrite_query", "retrieve")
+workflow.add_edge("retrieve", "decide_action")
+workflow.add_conditional_edges("decide_action", route_after_decide)
+workflow.add_edge("execute_tools", "synthesize")
+workflow.add_edge("synthesize", END)
+
+graph = workflow.compile()
+result = graph.invoke(initial_state)
+```
+
+**Key Learn**: **StateGraph**, **TypedDict State**, **Nodes**, **Conditional Edges**, **Compilation**.
+
+---
+
+### Level 5e: Class-Based Structured Tools (`05e-class-based-tools.py`)
+
+**Concept**: Tools as classes with structured I/O.
+
+```python
+@dataclass
+class ToolResult:
+    status: ToolStatus  # SUCCESS | ERROR | PARTIAL
+    data: Any = None
+    error: Optional[str] = None
+    metadata: Dict = field(default_factory=dict)
+
+class BaseTool(ABC):
+    @property @abstractmethod def name(self): ...
+    @property @abstractmethod def description(self): ...
+    @property @abstractmethod def input_schema(self): ...
+    @abstractmethod def execute(self, **kwargs) -> ToolResult: ...
+
+class ListContainersTool(BaseTool):
+    def __init__(self, docker_tools: DockerToolSet):  # Dependency injection
+        self.docker = docker_tools
+    
+    def execute(self, all: bool = False, format: str = "table") -> ToolResult:
+        # Returns structured data, not raw string
+        return ToolResult.success(data={"containers": [...], "count": 5}, format=format)
+
+# Analysis tools with BUILT-IN LOGIC
+class AnalysisToolSet:
+    def analyze_container_health(self, container: str) -> ToolResult:
+        # Does the analysis that would need multiple LLM steps
+        issues = []
+        if container_data["State"]["OOMKilled"]:
+            issues.append("OOMKilled - increase memory limit")
+        return ToolResult.success(data={"issues": issues, "recommendations": [...]})
+```
+
+**Key Learn**: **Dependency Injection**, **Structured Results**, **Analysis Tools** (logic in tools, not prompts).
+
+---
+
+### Level 5f: Multi-Step Reasoning (`05f-multi-step-agent.py`)
+
+**Concept**: Explicit Plan → Think → Act → Observe → Reflect loop.
+
+```python
+class StepType(Enum):
+    PLAN = "plan"
+    THINK = "think"
+    ACT = "act"
+    OBSERVE = "observe"
+    REFLECT = "reflect"
+    SYNTHESIZE = "synthesize"
+
+async def run(self, query):
+    # Phase 1: PLAN
+    plan = await self.plan(query)  # Creates AgentPlan with steps
+    
+    # Phase 2: EXECUTE with REFLECTION
+    while plan.current_step < len(plan.steps):
+        await self.execute_step(plan, plan.current_step, query)
+        should_continue = await self.reflect(plan, query)  # Can add steps!
+        if not should_continue: break
+    
+    # Phase 3: SYNTHESIZE
+    answer = await self.synthesize(query)
+```
+
+**Key Learn**: **Plan-and-Execute**, **Reflection Loop**, **Visible Reasoning Trace**, **Dynamic Plan Adjustment**.
+
+---
+
+### Level 6: Production Kubernetes Agent (`06-kubernetes-agent.py`)
+
+**Concept**: All patterns combined in a real system.
+
+```python
+# Real Vector DB
+kb = KnowledgeBase()  # ChromaDB + HuggingFaceEmbeddings (MiniLM-L6-v2)
+kb.add_knowledge(k8s_docs)  # Chunk → Embed → Store
+
+# Real K8s Tools
+class KubernetesTools:
+    def list_pods(self, namespace="default"):
+        pods = self.k8s.core_v1.list_namespaced_pod(namespace)
+        return {"pods": [...], "count": len(pods)}
+    
+    def analyze_pod(self, pod_name, namespace="default"):
+        # Real issue detection: CrashLoopBackOff, OOMKilled, high restarts
+        return {"issues": [...], "phase": pod.status.phase}
+
+# LangGraph with 5 nodes (production version of Level 5d)
+agent_graph = build_agent_graph(k8s_tools, kb, llm)
+
+# MCP Server for external access
+server = MCPServer(agent_graph, k8s_tools)
+server.run()  # JSON-RPC over stdio
+```
+
+**Key Learn**: **ChromaDB**, **Sentence Transformers**, **Kubernetes Python Client**, **MCP Server Implementation**, **In-Cluster Auth**.
+
+---
+
+## 🧠 Concept Map
+
+```
+┌────────────────────────────────────────────────────────────────────┐
+│                        AGENTIC AI STACK                            │
+├────────────────────────────────────────────────────────────────────┤
+│                                                                    │
+│  ┌─────────────┐                                                   │
+│  │   LLM       │  ← Level 1: Core reasoning engine                │
+│  │  (Ollama)   │                                                   │
+│  └──────┬──────┘                                                   │
+│         │                                                          │
+│  ┌──────▼──────┐                                                   │
+│  │   TOOLS     │  ← Level 2,3,4: Action execution                 │
+│  │  @tool/MCP  │                                                   │
+│  └──────┬──────┘                                                   │
+│         │                                                          │
+│  ┌──────▼──────┐     ┌─────────────┐                               │
+│  │   MEMORY    │     │    RAG      │  ← Level 5a, 5c: Knowledge   │
+│  │  Messages   │     │  Vector DB  │       + Context              │
+│  └──────┬──────┘     └──────┬──────┘                               │
+│         │                   │                                      │
+│  ┌──────▼───────────────────▼──────┐                               │
+│  │      ORCHESTRATION              │  ← Level 5d, 5f: Control     │
+│  │   LangGraph + Multi-Step        │       Flow + Reasoning       │
+│  └──────┬───────────────────┬──────┘                               │
+│         │                   │                                      │
+│  ┌──────▼──────┐     ┌──────▼──────┐                               │
+│  │  STRUCTURED │     │  PRODUCTION │  ← Level 5e, 6: Reliability  │
+│  │   TOOLS     │     │  (K8s/MCP)  │       + Scale                │
+│  └─────────────┘     └─────────────┘                               │
+│                                                                    │
+└────────────────────────────────────────────────────────────────────┘
+```
+
+## 🔑 Key Patterns Reference
+
+| Pattern | When to Use | Example |
+|---------|-------------|---------|
+| **Tool Calling** | LLM needs external data/action | Docker ops, API calls |
+| **MCP** | Share tools across languages/agents | Team tool server |
+| **Memory** | Multi-turn conversations | Chat agents |
+| **Streaming** | Long responses, better UX | Code generation |
+| **Concurrency** | Multiple independent queries | Batch analysis |
+| **RAG** | Domain knowledge beyond training | Troubleshooting guides |
+| **LangGraph** | Complex multi-step workflows | CI/CD pipelines |
+| **Structured Tools** | Reliable tool interfaces | Production systems |
+| **Multi-Step** | Complex reasoning needed | Root cause analysis |
+| **Vector DB** | Semantic search at scale | Large knowledge bases |
 
 ## 📖 Further Reading
 
-- **LangGraph**: https://langchain-ai.github.io/langgraph/
-- **MCP Specification**: https://modelcontextprotocol.io/
-- **RAG Pattern**: https://www.pinecone.io/learn/retrieval-augmented-generation/
-- **ChromaDB**: https://docs.trychroma.com/
-- **Kubernetes Python Client**: https://github.com/kubernetes-client/python
+- [LangChain Agents](https://python.langchain.com/docs/modules/agents/)
+- [LangGraph Documentation](https://langchain-ai.github.io/langgraph/)
+- [MCP Specification](https://modelcontextprotocol.io/)
+- [ChromaDB](https://www.trychroma.com/)
+- [Sentence Transformers](https://www.sbert.net/)
+- [Kubernetes Python Client](https://github.com/kubernetes-client/python)
+
+## 🤝 Contributing
+
+This is a learning repository. Each level should:
+1. Introduce **exactly one** new concept
+2. Include **inline comments** explaining the concept
+3. Have a `--demo` mode for non-interactive testing
+4. Build on the previous level's patterns
 
 ---
 
-## 👩‍💻 Author
-
-**Zeeshan Kanuga** — Technical Architect | DevOps Engineer | Platform Engineering | AI-Augmented DevOps
-
-Built by [Zeeshan Kanuga](https://github.com/zeeshankanuga)
-
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?style=flat&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/zeeshankanuga/)
-
----
-
-## 📄 License
-
-MIT License — Educational use encouraged!
-
----
-
-**Built for learning Agentic AI concepts progressively** 🚀
+**Happy Learning!** 🎓 Start with `01-generative_ai.py` and progress through each level.
