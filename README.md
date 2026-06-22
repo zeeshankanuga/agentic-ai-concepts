@@ -460,4 +460,14 @@ This is a learning repository. Each level should:
 
 ---
 
+## 👩‍💻 Author
+
+**Zeeshan kanuga** — Technical Architect |DevOps Engineer | Platform Engineering | AI-Augmented DevOps
+
+Built by [Zeeshan Kanuga](https://github.com/zeeshankanuga)
+
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?style=flat&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/zeeshankanuga/)
+
+---
+
 **Happy Learning!** 🎓 Start with `01-generative_ai.py` and progress through each level.
