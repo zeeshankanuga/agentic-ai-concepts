@@ -470,4 +470,4 @@ Built by [Zeeshan Kanuga](https://github.com/zeeshankanuga)
 
 ---
 
-**Happy Learning!** 🎓 Start with `01-generative_ai.py` and progress through each level.
+**Happy Learning!**
